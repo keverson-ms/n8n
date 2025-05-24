@@ -1,0 +1,6 @@
+!.gitignore
+*.test.pem
+*.test-key.pem
+*.test.key
+*.test.crt
+*.exe

@@ -1,0 +1,86 @@
+services:
+  traefik:
+    build:
+        context: ./docker/traefik
+        dockerfile: Dockerfile
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/certs:/certs:ro
+      - ./docker/traefik/template:/etc/traefik/template
+      - ./docker/traefik:/etc/traefik/dynamic
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      N8N_HOST: ${N8N_HOST}
+  postgres:
+    build:
+        context: ./docker/postgres
+        dockerfile: Dockerfile
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_POSTGRESDB_USER}
+      POSTGRES_PASSWORD: ${DB_POSTGRESDB_PASSWORD}
+      POSTGRES_DB: ${DB_POSTGRESDB_DATABASE}
+    ports:
+      - "${DB_POSTGRESDB_PORT}:5432"
+    volumes:
+      - n8n_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    build:
+      context: ./docker/redis
+      dockerfile: Dockerfile
+    container_name: redis
+    restart: unless-stopped
+ 
+  n8n:
+    build:
+      context: ./docker/n8n
+      dockerfile: Dockerfile
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - DB_TYPE=${DB_TYPE}
+      - DB_POSTGRESDB_HOST=${DB_POSTGRESDB_HOST}
+      - DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT}
+      - DB_POSTGRESDB_DATABASE=${DB_POSTGRESDB_DATABASE}
+      - DB_POSTGRESDB_USER=${DB_POSTGRESDB_USER}
+      - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD}
+      - QUEUE_MODE=${QUEUE_MODE}
+      - QUEUE_REDIS_HOST=${QUEUE_REDIS_HOST}
+      - QUEUE_REDIS_PORT=${QUEUE_REDIS_PORT}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${N8N_HOST}
+      - NODE_ENV=${NODE_ENV}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+    volumes:
+      - ./docker/data:/home/node/.n8n
+      - ./local-files:/files
+    depends_on:
+      - postgres
+      - redis
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.entrypoints=websecure
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.service=n8n
+      - traefik.http.services.n8n.loadbalancer.server.port=5678
+volumes:
+  n8n_postgres_data:
