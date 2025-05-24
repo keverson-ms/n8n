@@ -33,7 +33,7 @@ E no terminal, onde executou o comando `.\mkcert.exe -install` terá uma saída 
 Na sequência, execute no mesmo nível de diretório de antes o seguinte comando:
 
 ```bash
-    .\mkcert.exe n8n.sfiemt.test
+    .\mkcert.exe n8n.test
 ```
 
 O domínio acima, foi configurado no host do `Windows`, em:
